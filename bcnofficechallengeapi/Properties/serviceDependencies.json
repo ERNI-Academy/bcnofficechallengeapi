@@ -1,0 +1,18 @@
+{
+  "dependencies": {
+    "identityapp1": {
+      "type": "identityapp"
+    },
+    "secrets1": {
+      "type": "secrets"
+    },
+    "mssql1": {
+      "type": "mssql",
+      "connectionId": "ConnectionStrings:DatabaseConnection",
+      "dynamicId": null
+    },
+    "apis1": {
+      "type": "apis"
+    }
+  }
+}

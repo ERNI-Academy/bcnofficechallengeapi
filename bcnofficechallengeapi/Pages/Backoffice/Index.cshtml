@@ -1,0 +1,301 @@
+@page
+@model bcnofficechallengeapi.Pages.Backoffice.IndexModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Backoffice - Sponsors</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            color: #333;
+        }
+        .header {
+            background: #1a1a2e;
+            color: #fff;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 20px; }
+        .header a {
+            color: #ccc;
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        .header a:hover { color: #fff; }
+        .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
+
+        /* Form */
+        .form-card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 24px;
+            margin-bottom: 30px;
+        }
+        .form-card h2 {
+            margin-bottom: 18px;
+            font-size: 18px;
+            color: #1a1a2e;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        .form-grid .full-width { grid-column: 1 / -1; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label {
+            margin-bottom: 4px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #555;
+        }
+        .form-group input,
+        .form-group textarea {
+            padding: 9px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #4a6cf7;
+        }
+        .form-actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-primary { background: #4a6cf7; color: #fff; }
+        .btn-primary:hover { background: #3a5ce5; }
+        .btn-secondary { background: #e0e0e0; color: #333; display: none; }
+        .btn-secondary:hover { background: #d0d0d0; }
+
+        /* Table */
+        .table-card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .table-card h2 {
+            padding: 20px 24px 14px;
+            font-size: 18px;
+            color: #1a1a2e;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            background: #f8f9fa;
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #888;
+            border-bottom: 2px solid #eee;
+        }
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+            vertical-align: top;
+        }
+        tr:hover td { background: #fafbff; }
+        .desc-cell {
+            max-width: 250px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .url-cell {
+            max-width: 180px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .actions { display: flex; gap: 6px; }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .btn-edit { background: #e8f0fe; color: #4a6cf7; }
+        .btn-edit:hover { background: #d0e0fd; }
+        .btn-delete { background: #fde8e8; color: #c00; }
+        .btn-delete:hover { background: #fdd; }
+        .empty-msg {
+            padding: 40px;
+            text-align: center;
+            color: #aaa;
+            font-size: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Backoffice</h1>
+        <nav style="display:flex;gap:20px;align-items:center">
+            <a href="/Backoffice" style="color:#fff;text-decoration:none;font-size:14px;font-weight:600">Sponsors</a>
+            <a href="/Backoffice/Users" style="color:#ccc;text-decoration:none;font-size:14px">Users</a>
+            <a href="/Backoffice/Login?handler=Logout" style="color:#ccc;text-decoration:none;font-size:14px">Logout</a>
+        </nav>
+    </div>
+
+    <div class="container">
+        <!-- Add / Edit form -->
+        <div class="form-card">
+            <h2 id="formTitle">Add Sponsor</h2>
+            <form method="post" asp-page-handler="Save">
+                <input type="hidden" asp-for="SponsorForm.Id" id="SponsorId" value="00000000-0000-0000-0000-000000000000" />
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="SponsorName">Name *</label>
+                        <input type="text" asp-for="SponsorForm.Name" id="SponsorName" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="SponsorUrl">URL</label>
+                        <input type="url" asp-for="SponsorForm.Url" id="SponsorUrl" placeholder="https://..." />
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="SponsorDescription">Description</label>
+                        <textarea asp-for="SponsorForm.Description" id="SponsorDescription" placeholder="Sponsor description..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="SponsorImageUrl">Image URL (logo)</label>
+                        <input type="url" asp-for="SponsorForm.ImageUrl" id="SponsorImageUrl" placeholder="https://...logo.png" />
+                    </div>
+                    <div class="form-group">
+                        <label for="SponsorPointsValue">Points Value</label>
+                        <input type="number" asp-for="SponsorForm.PointsValue" id="SponsorPointsValue" value="0" min="0" />
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="submitBtn">Add</button>
+                    <button type="button" class="btn btn-secondary" id="cancelBtn" onclick="cancelEdit()">Cancel</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Sponsors table -->
+        <div class="table-card">
+            <h2>Sponsors (@Model.Sponsors.Count)</h2>
+            @if (Model.Sponsors.Count == 0)
+            {
+                <div class="empty-msg">No sponsors yet. Use the form above to add one.</div>
+            }
+            else
+            {
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>URL</th>
+                            <th>Image</th>
+                            <th>Points</th>
+                            <th>QR ID</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in Model.Sponsors)
+                        {
+                            <tr>
+                                    <td>@s.Id</td>
+                                    <td><strong>@s.Name</strong></td>
+                                    <td class="desc-cell" title="@s.Description">@s.Description</td>
+                                    <td class="url-cell">
+                                        @if (!string.IsNullOrEmpty(s.Url))
+                                        {
+                                            <a href="@s.Url" target="_blank">@s.Url</a>
+                                        }
+                                    </td>
+                                    <td class="url-cell">
+                                        @if (!string.IsNullOrEmpty(s.ImageUrl))
+                                        {
+                                            <a href="@s.ImageUrl" target="_blank">View</a>
+                                        }
+                                    </td>
+                                    <td>@s.PointsValue</td>
+                                    <td>
+                                        <code style="font-size:11px;background:#f4f4f4;padding:2px 6px;border-radius:4px;cursor:pointer"
+                                              title="Click to copy QR ID"
+                                              onclick="navigator.clipboard.writeText('@s.QrId');this.style.background='#d4edda'">
+                                            @s.QrId.ToString()[..8]…
+                                        </code>
+                                    </td>
+                                <td class="actions">
+                                    <button type="button" class="btn-sm btn-edit"
+                                            onclick="editSponsor('@s.Id', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(s.Name))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(s.Description ?? ""))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(s.Url ?? ""))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(s.ImageUrl ?? ""))', @s.PointsValue)">
+                                        Edit
+                                    </button>
+                                    <form method="post" asp-page-handler="Delete" style="display:inline">
+                                        <input type="hidden" name="id" value="@s.Id" />
+                                        <button type="submit" class="btn-sm btn-delete"
+                                                onclick="return confirm('Delete &quot;@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(s.Name))&quot;?')">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <script>
+        function editSponsor(id, name, description, url, imageUrl, pointsValue) {
+            document.getElementById('SponsorId').value = id;
+            document.getElementById('SponsorName').value = name;
+            document.getElementById('SponsorDescription').value = description;
+            document.getElementById('SponsorUrl').value = url;
+            document.getElementById('SponsorImageUrl').value = imageUrl;
+            document.getElementById('SponsorPointsValue').value = pointsValue;
+            document.getElementById('formTitle').textContent = 'Edit Sponsor (ID: ' + id + ')';
+            document.getElementById('submitBtn').textContent = 'Update';
+            document.getElementById('cancelBtn').style.display = 'inline-block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            document.getElementById('SponsorId').value = '00000000-0000-0000-0000-000000000000';
+            document.getElementById('SponsorName').value = '';
+            document.getElementById('SponsorDescription').value = '';
+            document.getElementById('SponsorUrl').value = '';
+            document.getElementById('SponsorImageUrl').value = '';
+            document.getElementById('SponsorPointsValue').value = '0';
+            document.getElementById('formTitle').textContent = 'Add Sponsor';
+            document.getElementById('submitBtn').textContent = 'Add';
+            document.getElementById('cancelBtn').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,284 @@
+@page
+@model bcnofficechallengeapi.Pages.Backoffice.UsersModel
+@{
+    Layout = null;
+    string Q(int page) => $"?page={page}&name={Model.FilterName}&email={Model.FilterEmail}";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Backoffice - Users</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #333; }
+        .header { background: #1a1a2e; color: #fff; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 20px; }
+        .header nav { display: flex; gap: 20px; align-items: center; }
+        .header nav a { color: #ccc; text-decoration: none; font-size: 14px; transition: color 0.2s; }
+        .header nav a:hover, .header nav a.active { color: #fff; }
+        .container { max-width: 1300px; margin: 30px auto; padding: 0 20px; }
+
+        .form-card, .filter-card, .table-card {
+            background: #fff; border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 24px; margin-bottom: 24px;
+        }
+        .form-card h2, .filter-card h2, .table-card h2 { margin-bottom: 18px; font-size: 18px; color: #1a1a2e; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+        .form-grid .full-width { grid-column: 1 / -1; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { margin-bottom: 4px; font-weight: 600; font-size: 13px; color: #555; }
+        .form-group input { padding: 9px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit; }
+        .form-group input:focus { outline: none; border-color: #4a6cf7; }
+        .form-actions { margin-top: 16px; display: flex; gap: 10px; }
+
+        .filter-grid { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 12px; align-items: end; }
+        .filter-grid .form-group label { font-size: 13px; font-weight: 600; color: #555; }
+
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; text-decoration: none; display: inline-block; }
+        .btn-primary { background: #4a6cf7; color: #fff; }
+        .btn-primary:hover { background: #3a5ce5; }
+        .btn-secondary { background: #e0e0e0; color: #333; display: none; }
+        .btn-secondary:hover { background: #d0d0d0; }
+        .btn-clear { background: #f0f2f5; color: #555; border: 1px solid #ddd; }
+        .btn-clear:hover { background: #e0e0e0; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8f9fa; text-align: left; padding: 12px 16px; font-size: 12px; text-transform: uppercase; color: #888; border-bottom: 2px solid #eee; }
+        td { padding: 10px 16px; border-bottom: 1px solid #f0f0f0; font-size: 13px; vertical-align: middle; }
+        tr:hover td { background: #fafbff; }
+        .cell-truncate { max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .actions { display: flex; gap: 6px; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
+        .btn-edit { background: #e8f0fe; color: #4a6cf7; }
+        .btn-edit:hover { background: #d0e0fd; }
+        .btn-delete { background: #fde8e8; color: #c00; }
+        .btn-delete:hover { background: #fdd; }
+        .empty-msg { padding: 40px; text-align: center; color: #aaa; font-size: 15px; }
+        .badge-points { background: #e8f5e9; color: #2e7d32; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 12px; }
+
+        .pagination { display: flex; justify-content: space-between; align-items: center; padding: 16px 0 0; flex-wrap: wrap; gap: 8px; }
+        .pagination-info { font-size: 13px; color: #888; }
+        .pagination-pages { display: flex; gap: 4px; flex-wrap: wrap; }
+        .page-btn { padding: 6px 12px; border: 1px solid #ddd; border-radius: 4px; background: #fff; color: #333; text-decoration: none; font-size: 13px; transition: all 0.2s; }
+        .page-btn:hover { background: #f0f2f5; }
+        .page-btn.active { background: #4a6cf7; color: #fff; border-color: #4a6cf7; font-weight: 700; }
+        .page-btn.disabled { color: #ccc; pointer-events: none; }
+
+        .alert-error { background: #fde8e8; color: #c00; border: 1px solid #fbb; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; }
+    </style>
+</head>
+<body>
+<div class="header">
+    <h1>Backoffice</h1>
+    <nav>
+        <a href="/Backoffice">Sponsors</a>
+        <a href="/Backoffice/Users" class="active">Users</a>
+        <a href="/Backoffice/Login?handler=Logout">Logout</a>
+    </nav>
+</div>
+
+<div class="container">
+
+    @if (TempData["Error"] is string error)
+    {
+        <div class="alert-error">@error</div>
+    }
+
+    <!-- Add / Edit form -->
+    <div class="form-card">
+        <h2 id="formTitle">Add User</h2>
+        <form method="post" asp-page-handler="Save">
+            <input type="hidden" asp-for="Form.Id" id="UserId" value="00000000-0000-0000-0000-000000000000" />
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Name *</label>
+                    <input type="text" asp-for="Form.Name" id="uName" required />
+                </div>
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" asp-for="Form.Email" id="uEmail" required />
+                </div>
+                <div class="form-group">
+                    <label>Password <span id="pwdHint" style="font-weight:400;color:#aaa">(required for new)</span></label>
+                    <input type="password" asp-for="Form.Password" id="uPassword" autocomplete="new-password" />
+                </div>
+                <div class="form-group">
+                    <label>Company Name</label>
+                    <input type="text" asp-for="Form.CompanyName" id="uCompanyName" />
+                </div>
+                <div class="form-group">
+                    <label>Job Title</label>
+                    <input type="text" asp-for="Form.JobTitle" id="uJobTitle" />
+                </div>
+                <div class="form-group">
+                    <label>Points</label>
+                    <input type="number" asp-for="Form.Points" id="uPoints" value="0" min="0" />
+                </div>
+                <div class="form-group full-width">
+                    <label>LinkedIn URL</label>
+                    <input type="url" asp-for="Form.LinkedIn" id="uLinkedIn" placeholder="https://linkedin.com/in/..." />
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="submitBtn">Add</button>
+                <button type="button" class="btn btn-secondary" id="cancelBtn" onclick="cancelEdit()">Cancel</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Filter -->
+    <div class="filter-card">
+        <h2>Filter Users</h2>
+        <form method="get">
+            <div class="filter-grid">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" name="name" value="@Model.FilterName" placeholder="Search by name..." />
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="text" name="email" value="@Model.FilterEmail" placeholder="Search by email..." />
+                </div>
+                <button type="submit" class="btn btn-primary" style="height:38px">Search</button>
+                <a href="/Backoffice/Users" class="btn btn-clear" style="height:38px;line-height:18px">Clear</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Users table -->
+    <div class="table-card">
+        <h2>Users (@Model.TotalCount total)</h2>
+        @if (Model.Users.Count == 0)
+        {
+            <div class="empty-msg">No users found.</div>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Company</th>
+                        <th>Job Title</th>
+                        <th>Points</th>
+                        <th>Last Scan</th>
+                        <th>LinkedIn</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in Model.Users)
+                    {
+                        <tr>
+                            <td><strong>@u.Name</strong></td>
+                            <td class="cell-truncate" title="@u.Email">@u.Email</td>
+                            <td class="cell-truncate" title="@u.CompanyName">@u.CompanyName</td>
+                            <td class="cell-truncate" title="@u.JobTitle">@u.JobTitle</td>
+                            <td><span class="badge-points">@u.Points</span></td>
+                            <td>@(u.PointsTimestamp?.ToString("dd/MM/yy HH:mm") ?? "—")</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(u.LinkedIn))
+                                {
+                                    <a href="@u.LinkedIn" target="_blank">View</a>
+                                }
+                            </td>
+                            <td class="actions">
+                                <button type="button" class="btn-sm btn-edit"
+                                        onclick="editUser('@u.Id', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.Name))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.Email))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.CompanyName ?? ""))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.JobTitle ?? ""))', @u.Points, '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.LinkedIn ?? ""))')">
+                                    Edit
+                                </button>
+                                <form method="post" asp-page-handler="Delete" style="display:inline">
+                                    <input type="hidden" name="id" value="@u.Id" />
+                                    <button type="submit" class="btn-sm btn-delete"
+                                            onclick="return confirm('Delete user &quot;@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.Name))&quot;?')">
+                                        Delete
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <!-- Pagination -->
+            @if (Model.TotalPages > 1)
+            {
+                <div class="pagination">
+                    <span class="pagination-info">
+                        Page @Model.CurrentPage of @Model.TotalPages
+                        — showing @Model.Users.Count of @Model.TotalCount users
+                    </span>
+                    <div class="pagination-pages">
+                        @{
+                            var prev = Model.CurrentPage - 1;
+                            var next = Model.CurrentPage + 1;
+                            var start = Math.Max(1, Model.CurrentPage - 2);
+                            var end = Math.Min(Model.TotalPages, Model.CurrentPage + 2);
+                        }
+                        @if (Model.CurrentPage > 1)
+                        {
+                            <a href="@Q(prev)" class="page-btn">← Prev</a>
+                        }
+                        @if (start > 1)
+                        {
+                            <a href="@Q(1)" class="page-btn">1</a>
+                            if (start > 2) { <span class="page-btn disabled">…</span> }
+                        }
+                        @for (int p = start; p <= end; p++)
+                        {
+                            <a href="@Q(p)" class="page-btn @(p == Model.CurrentPage ? "active" : "")">@p</a>
+                        }
+                        @if (end < Model.TotalPages)
+                        {
+                            if (end < Model.TotalPages - 1) { <span class="page-btn disabled">…</span> }
+                            <a href="@Q(Model.TotalPages)" class="page-btn">@Model.TotalPages</a>
+                        }
+                        @if (Model.CurrentPage < Model.TotalPages)
+                        {
+                            <a href="@Q(next)" class="page-btn">Next →</a>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<script>
+    function editUser(id, name, email, companyName, jobTitle, points, linkedIn) {
+        document.getElementById('UserId').value = id;
+        document.getElementById('uName').value = name;
+        document.getElementById('uEmail').value = email;
+        document.getElementById('uPassword').value = '';
+        document.getElementById('uCompanyName').value = companyName;
+        document.getElementById('uJobTitle').value = jobTitle;
+        document.getElementById('uPoints').value = points;
+        document.getElementById('uLinkedIn').value = linkedIn;
+        document.getElementById('formTitle').textContent = 'Edit User';
+        document.getElementById('pwdHint').textContent = '(leave empty to keep current)';
+        document.getElementById('submitBtn').textContent = 'Update';
+        document.getElementById('cancelBtn').style.display = 'inline-block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function cancelEdit() {
+        document.getElementById('UserId').value = '00000000-0000-0000-0000-000000000000';
+        document.getElementById('uName').value = '';
+        document.getElementById('uEmail').value = '';
+        document.getElementById('uPassword').value = '';
+        document.getElementById('uCompanyName').value = '';
+        document.getElementById('uJobTitle').value = '';
+        document.getElementById('uPoints').value = '0';
+        document.getElementById('uLinkedIn').value = '';
+        document.getElementById('formTitle').textContent = 'Add User';
+        document.getElementById('pwdHint').textContent = '(required for new)';
+        document.getElementById('submitBtn').textContent = 'Add';
+        document.getElementById('cancelBtn').style.display = 'none';
+    }
+</script>
+</body>
+</html>
