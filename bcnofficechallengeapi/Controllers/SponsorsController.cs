@@ -33,27 +33,13 @@ public class SponsorsController(AppDbContext db) : ControllerBase
         return Ok(ToResponse(sponsor));
     }
 
-    [HttpGet("by-qr/{qrId}")]
-    public async Task<ActionResult<SponsorResponse>> GetByQrId(Guid qrId)
-    {
-        var sponsor = await db.Sponsors.FirstOrDefaultAsync(s => s.QrId == qrId);
-
-        if (sponsor is null)
-        {
-            return NotFound(new { error = "Invalid QR code." });
-        }
-
-        return Ok(ToResponse(sponsor));
-    }
-
     private static SponsorResponse ToResponse(Sponsor sponsor) => new()
     {
         Id = sponsor.Id,
         Name = sponsor.Name,
         Description = sponsor.Description,
         Url = sponsor.Url,
-        ImageUrl = sponsor.ImageUrl,
-        PointsValue = sponsor.PointsValue
+        ImageUrl = sponsor.ImageUrl
     };
 }
 
@@ -64,5 +50,4 @@ public class SponsorResponse
     public string? Description { get; set; }
     public string? Url { get; set; }
     public string? ImageUrl { get; set; }
-    public int PointsValue { get; set; }
 }

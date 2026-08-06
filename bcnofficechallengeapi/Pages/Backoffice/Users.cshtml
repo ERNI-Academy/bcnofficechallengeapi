@@ -74,7 +74,8 @@
 <div class="header">
     <h1>Backoffice</h1>
     <nav>
-        <a href="/Backoffice">Sponsors</a>
+        <a href="/Backoffice">Rooms</a>
+        <a href="/Backoffice/Questions">Questions</a>
         <a href="/Backoffice/Users" class="active">Users</a>
         <a href="/Backoffice/Login?handler=Logout">Logout</a>
     </nav>
@@ -112,14 +113,6 @@
                 <div class="form-group">
                     <label>Job Title</label>
                     <input type="text" asp-for="Form.JobTitle" id="uJobTitle" />
-                </div>
-                <div class="form-group">
-                    <label>Points</label>
-                    <input type="number" asp-for="Form.Points" id="uPoints" value="0" min="0" />
-                </div>
-                <div class="form-group full-width">
-                    <label>LinkedIn URL</label>
-                    <input type="url" asp-for="Form.LinkedIn" id="uLinkedIn" placeholder="https://linkedin.com/in/..." />
                 </div>
             </div>
             <div class="form-actions">
@@ -166,7 +159,6 @@
                         <th>Job Title</th>
                         <th>Points</th>
                         <th>Last Scan</th>
-                        <th>LinkedIn</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -180,15 +172,9 @@
                             <td class="cell-truncate" title="@u.JobTitle">@u.JobTitle</td>
                             <td><span class="badge-points">@u.Points</span></td>
                             <td>@(u.PointsTimestamp?.ToString("dd/MM/yy HH:mm") ?? "—")</td>
-                            <td>
-                                @if (!string.IsNullOrEmpty(u.LinkedIn))
-                                {
-                                    <a href="@u.LinkedIn" target="_blank">View</a>
-                                }
-                            </td>
                             <td class="actions">
                                 <button type="button" class="btn-sm btn-edit"
-                                        onclick="editUser('@u.Id', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.Name))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.Email))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.CompanyName ?? ""))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.JobTitle ?? ""))', @u.Points, '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.LinkedIn ?? ""))')">
+                                        onclick="editUser('@u.Id', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.Name))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.Email))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.CompanyName ?? ""))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.JobTitle ?? ""))')">
                                     Edit
                                 </button>
                                 <form method="post" asp-page-handler="Delete" style="display:inline">
@@ -249,15 +235,13 @@
 </div>
 
 <script>
-    function editUser(id, name, email, companyName, jobTitle, points, linkedIn) {
+    function editUser(id, name, email, companyName, jobTitle) {
         document.getElementById('UserId').value = id;
         document.getElementById('uName').value = name;
         document.getElementById('uEmail').value = email;
         document.getElementById('uPassword').value = '';
         document.getElementById('uCompanyName').value = companyName;
         document.getElementById('uJobTitle').value = jobTitle;
-        document.getElementById('uPoints').value = points;
-        document.getElementById('uLinkedIn').value = linkedIn;
         document.getElementById('formTitle').textContent = 'Edit User';
         document.getElementById('pwdHint').textContent = '(leave empty to keep current)';
         document.getElementById('submitBtn').textContent = 'Update';
@@ -272,8 +256,6 @@
         document.getElementById('uPassword').value = '';
         document.getElementById('uCompanyName').value = '';
         document.getElementById('uJobTitle').value = '';
-        document.getElementById('uPoints').value = '0';
-        document.getElementById('uLinkedIn').value = '';
         document.getElementById('formTitle').textContent = 'Add User';
         document.getElementById('pwdHint').textContent = '(required for new)';
         document.getElementById('submitBtn').textContent = 'Add';

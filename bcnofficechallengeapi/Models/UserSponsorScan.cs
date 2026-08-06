@@ -9,4 +9,8 @@ public class UserSponsorScan
     public Guid SponsorId { get; set; }
 
     public DateTime ScannedAt { get; set; }
+
+    public int PointsAwarded { get; set; }
+
+    public int MaximumPoints { get; set; }
 }

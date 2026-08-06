@@ -10,7 +10,7 @@ namespace bcnofficechallengeapi.Pages.Backoffice;
 public class LoginModel(AppDbContext db) : PageModel
 {
     [BindProperty]
-    public string User { get; set; } = string.Empty;
+    public new string User { get; set; } = string.Empty;
 
     [BindProperty]
     public string Password { get; set; } = string.Empty;

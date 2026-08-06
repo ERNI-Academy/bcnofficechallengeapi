@@ -1,15 +1,18 @@
 using bcnofficechallengeapi.Data;
 using bcnofficechallengeapi.Models;
+using bcnofficechallengeapi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace bcnofficechallengeapi.Pages.Backoffice;
 
 [Authorize(AuthenticationSchemes = "BackofficeCookie")]
-public class IndexModel(AppDbContext db) : PageModel
+public class IndexModel(AppDbContext db, QrTokenService qrTokens) : PageModel
 {
+    private readonly Dictionary<Guid, string> qrJsonByRoom = [];
     public List<Sponsor> Sponsors { get; set; } = [];
 
     [BindProperty]
@@ -18,6 +21,20 @@ public class IndexModel(AppDbContext db) : PageModel
     public async Task OnGetAsync()
     {
         Sponsors = await db.Sponsors.OrderBy(s => s.Name).ToListAsync();
+    }
+
+    public string GetQrJson(Sponsor sponsor)
+    {
+        if (qrJsonByRoom.TryGetValue(sponsor.Id, out var existing))
+            return existing;
+
+        var created = JsonSerializer.Serialize(new
+        {
+            v = 1,
+            token = qrTokens.Protect(sponsor.QrId)
+        });
+        qrJsonByRoom[sponsor.Id] = created;
+        return created;
     }
 
     public async Task<IActionResult> OnPostSaveAsync()
@@ -36,7 +53,6 @@ public class IndexModel(AppDbContext db) : PageModel
                 existing.Description = SponsorForm.Description;
                 existing.Url = SponsorForm.Url;
                 existing.ImageUrl = SponsorForm.ImageUrl;
-                existing.PointsValue = SponsorForm.PointsValue;
             }
         }
 

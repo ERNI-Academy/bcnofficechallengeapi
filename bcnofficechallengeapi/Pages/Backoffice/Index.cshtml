@@ -160,7 +160,8 @@
     <div class="header">
         <h1>Backoffice</h1>
         <nav style="display:flex;gap:20px;align-items:center">
-            <a href="/Backoffice" style="color:#fff;text-decoration:none;font-size:14px;font-weight:600">Sponsors</a>
+            <a href="/Backoffice" style="color:#fff;text-decoration:none;font-size:14px;font-weight:600">Rooms</a>
+            <a href="/Backoffice/Questions" style="color:#ccc;text-decoration:none;font-size:14px">Questions</a>
             <a href="/Backoffice/Users" style="color:#ccc;text-decoration:none;font-size:14px">Users</a>
             <a href="/Backoffice/Login?handler=Logout" style="color:#ccc;text-decoration:none;font-size:14px">Logout</a>
         </nav>
@@ -169,12 +170,12 @@
     <div class="container">
         <!-- Add / Edit form -->
         <div class="form-card">
-            <h2 id="formTitle">Add Sponsor</h2>
+            <h2 id="formTitle">Add Room</h2>
             <form method="post" asp-page-handler="Save">
                 <input type="hidden" asp-for="SponsorForm.Id" id="SponsorId" value="00000000-0000-0000-0000-000000000000" />
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="SponsorName">Name *</label>
+                        <label for="SponsorName">Room name *</label>
                         <input type="text" asp-for="SponsorForm.Name" id="SponsorName" required />
                     </div>
                     <div class="form-group">
@@ -183,15 +184,11 @@
                     </div>
                     <div class="form-group full-width">
                         <label for="SponsorDescription">Description</label>
-                        <textarea asp-for="SponsorForm.Description" id="SponsorDescription" placeholder="Sponsor description..."></textarea>
+                        <textarea asp-for="SponsorForm.Description" id="SponsorDescription" placeholder="Room description..."></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="SponsorImageUrl">Image URL (logo)</label>
+                        <label for="SponsorImageUrl">Image URL</label>
                         <input type="url" asp-for="SponsorForm.ImageUrl" id="SponsorImageUrl" placeholder="https://...logo.png" />
-                    </div>
-                    <div class="form-group">
-                        <label for="SponsorPointsValue">Points Value</label>
-                        <input type="number" asp-for="SponsorForm.PointsValue" id="SponsorPointsValue" value="0" min="0" />
                     </div>
                 </div>
                 <div class="form-actions">
@@ -203,10 +200,10 @@
 
         <!-- Sponsors table -->
         <div class="table-card">
-            <h2>Sponsors (@Model.Sponsors.Count)</h2>
+            <h2>Rooms (@Model.Sponsors.Count)</h2>
             @if (Model.Sponsors.Count == 0)
             {
-                <div class="empty-msg">No sponsors yet. Use the form above to add one.</div>
+                <div class="empty-msg">No rooms yet. Use the form above to add one.</div>
             }
             else
             {
@@ -218,8 +215,7 @@
                             <th>Description</th>
                             <th>URL</th>
                             <th>Image</th>
-                            <th>Points</th>
-                            <th>QR ID</th>
+                            <th>QR JSON</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -242,17 +238,16 @@
                                             <a href="@s.ImageUrl" target="_blank">View</a>
                                         }
                                     </td>
-                                    <td>@s.PointsValue</td>
                                     <td>
-                                        <code style="font-size:11px;background:#f4f4f4;padding:2px 6px;border-radius:4px;cursor:pointer"
-                                              title="Click to copy QR ID"
-                                              onclick="navigator.clipboard.writeText('@s.QrId');this.style.background='#d4edda'">
-                                            @s.QrId.ToString()[..8]…
+                                        <code style="display:block;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;background:#f4f4f4;padding:4px 6px;border-radius:4px;cursor:pointer"
+                                              title="Click to copy QR JSON"
+                                              onclick="navigator.clipboard.writeText('@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(Model.GetQrJson(s)))');this.style.background='#d4edda'">
+                                            @Model.GetQrJson(s)
                                         </code>
                                     </td>
                                 <td class="actions">
                                     <button type="button" class="btn-sm btn-edit"
-                                            onclick="editSponsor('@s.Id', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(s.Name))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(s.Description ?? ""))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(s.Url ?? ""))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(s.ImageUrl ?? ""))', @s.PointsValue)">
+                                            onclick="editSponsor('@s.Id', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(s.Name))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(s.Description ?? ""))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(s.Url ?? ""))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(s.ImageUrl ?? ""))')">
                                         Edit
                                     </button>
                                     <form method="post" asp-page-handler="Delete" style="display:inline">
@@ -272,14 +267,13 @@
     </div>
 
     <script>
-        function editSponsor(id, name, description, url, imageUrl, pointsValue) {
+        function editSponsor(id, name, description, url, imageUrl) {
             document.getElementById('SponsorId').value = id;
             document.getElementById('SponsorName').value = name;
             document.getElementById('SponsorDescription').value = description;
             document.getElementById('SponsorUrl').value = url;
             document.getElementById('SponsorImageUrl').value = imageUrl;
-            document.getElementById('SponsorPointsValue').value = pointsValue;
-            document.getElementById('formTitle').textContent = 'Edit Sponsor (ID: ' + id + ')';
+            document.getElementById('formTitle').textContent = 'Edit Room';
             document.getElementById('submitBtn').textContent = 'Update';
             document.getElementById('cancelBtn').style.display = 'inline-block';
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -291,8 +285,7 @@
             document.getElementById('SponsorDescription').value = '';
             document.getElementById('SponsorUrl').value = '';
             document.getElementById('SponsorImageUrl').value = '';
-            document.getElementById('SponsorPointsValue').value = '0';
-            document.getElementById('formTitle').textContent = 'Add Sponsor';
+            document.getElementById('formTitle').textContent = 'Add Room';
             document.getElementById('submitBtn').textContent = 'Add';
             document.getElementById('cancelBtn').style.display = 'none';
         }

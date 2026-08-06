@@ -24,7 +24,6 @@ public class CreateUserRequest
     [MinLength(1, ErrorMessage = "'jobTitle' cannot be empty.")]
     public string JobTitle { get; set; } = string.Empty;
 
-    public string? LinkedIn { get; set; }
 }
 
 public class UpdateUserRequest
@@ -34,12 +33,14 @@ public class UpdateUserRequest
     public string? Password { get; set; }
     public string? CompanyName { get; set; }
     public string? JobTitle { get; set; }
-    public string? LinkedIn { get; set; }
 }
 
 public class LoginRequest
 {
+    [Required]
     public string Email { get; set; } = string.Empty;
+
+    [Required]
     public string Password { get; set; } = string.Empty;
 }
 
@@ -52,5 +53,11 @@ public class UserResponse
     public string? JobTitle { get; set; }
     public int Points { get; set; }
     public DateTime? PointsTimestamp { get; set; }
-    public string? LinkedIn { get; set; }
+}
+
+public class AuthenticatedUserResponse
+{
+    public UserResponse User { get; set; } = new();
+    public string AccessToken { get; set; } = string.Empty;
+    public DateTime ExpiresAt { get; set; }
 }

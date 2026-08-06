@@ -48,6 +48,19 @@ public class UsersModel(AppDbContext db) : PageModel
 
     public async Task<IActionResult> OnPostSaveAsync()
     {
+        Form.Email = Form.Email.Trim().ToLowerInvariant();
+        if (!IsAllowedEmail(Form.Email))
+        {
+            TempData["Error"] = "Email must use the @betterask.erni domain.";
+            return RedirectToPage();
+        }
+
+        if (await db.Users.AnyAsync(user => user.Email == Form.Email && user.Id != Form.Id))
+        {
+            TempData["Error"] = "Email is already registered.";
+            return RedirectToPage();
+        }
+
         if (Form.Id == Guid.Empty)
         {
             if (string.IsNullOrWhiteSpace(Form.Password))
@@ -63,8 +76,7 @@ public class UsersModel(AppDbContext db) : PageModel
                 Password = BCrypt.Net.BCrypt.HashPassword(Form.Password),
                 CompanyName = Form.CompanyName,
                 JobTitle = Form.JobTitle,
-                Points = Form.Points,
-                LinkedIn = Form.LinkedIn
+                Points = 0,
             });
         }
         else
@@ -76,8 +88,6 @@ public class UsersModel(AppDbContext db) : PageModel
                 existing.Email = Form.Email;
                 existing.CompanyName = Form.CompanyName;
                 existing.JobTitle = Form.JobTitle;
-                existing.Points = Form.Points;
-                existing.LinkedIn = Form.LinkedIn;
                 if (!string.IsNullOrWhiteSpace(Form.Password))
                     existing.Password = BCrypt.Net.BCrypt.HashPassword(Form.Password);
             }
@@ -86,6 +96,10 @@ public class UsersModel(AppDbContext db) : PageModel
         await db.SaveChangesAsync();
         return RedirectToPage();
     }
+
+    private static bool IsAllowedEmail(string email) =>
+        email.EndsWith("@betterask.erni", StringComparison.OrdinalIgnoreCase) &&
+        email.Length > "@betterask.erni".Length;
 
     public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
@@ -108,6 +122,4 @@ public class UserForm
     public string? Password { get; set; }
     public string? CompanyName { get; set; }
     public string? JobTitle { get; set; }
-    public int Points { get; set; }
-    public string? LinkedIn { get; set; }
 }

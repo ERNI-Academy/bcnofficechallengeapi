@@ -1,16 +1,21 @@
 using System.Security.Claims;
+using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using bcnofficechallengeapi.Data;
+using bcnofficechallengeapi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddRazorPages();
+builder.Services.AddScoped<ParticipantTokenService>();
+builder.Services.AddSingleton<QrTokenService>();
 
 var sqlConnectionString = builder.Configuration["AZURE_SQL_CONNECTIONSTRING"]
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
@@ -43,6 +48,26 @@ var requiredReadRole = builder.Configuration["Auth:RequiredReadRole"] ?? "Api.Ac
 // Autenticación con Microsoft Entra ID (API) + Cookie (Backoffice)
 var authBuilder = builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme);
 authBuilder.AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
+var participantSigningKey = builder.Configuration["ParticipantJwt:SigningKey"]
+    ?? throw new InvalidOperationException("Missing ParticipantJwt:SigningKey configuration.");
+var participantIssuer = builder.Configuration["ParticipantJwt:Issuer"] ?? "bcnofficechallengeapi";
+var participantAudience = builder.Configuration["ParticipantJwt:Audience"] ?? "bcnofficechallenge-front";
+authBuilder.AddJwtBearer("ParticipantJwt", options =>
+{
+    options.MapInboundClaims = false;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidIssuer = participantIssuer,
+        ValidateAudience = true,
+        ValidAudience = participantAudience,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(participantSigningKey)),
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.FromMinutes(1),
+        NameClaimType = "sub"
+    };
+});
 authBuilder.AddCookie("BackofficeCookie", options =>
 {
     options.LoginPath = "/Backoffice/Login";
@@ -98,7 +123,7 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new() { Title = "Codemotion API", Version = "v1" });
+    options.SwaggerDoc("v1", new() { Title = "BCN Office Challenge API", Version = "v1" });
 
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
@@ -151,7 +176,7 @@ if (!app.Environment.IsDevelopment())
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
-    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Codemotion API v1");
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "BCN Office Challenge API v1");
     options.RoutePrefix = "swagger";
 });
 

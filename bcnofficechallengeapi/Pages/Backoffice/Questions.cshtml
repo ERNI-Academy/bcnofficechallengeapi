@@ -1,0 +1,133 @@
+@page
+@model bcnofficechallengeapi.Pages.Backoffice.QuestionsModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Backoffice - Questions</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#f0f2f5; color:#333; }
+        .header { background:#1a1a2e; color:#fff; padding:16px 32px; display:flex; justify-content:space-between; align-items:center; }
+        .header h1 { margin:0; font-size:20px; }
+        nav { display:flex; gap:20px; }
+        nav a { color:#ccc; text-decoration:none; font-size:14px; }
+        nav a.active { color:#fff; font-weight:600; }
+        .container { max-width:1300px; margin:30px auto; padding:0 20px; }
+        .card { background:#fff; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.08); padding:24px; margin-bottom:24px; overflow-x:auto; }
+        h2 { margin:0 0 18px; font-size:18px; }
+        .question-row { display:grid; grid-template-columns:180px minmax(280px,1fr) 170px 100px auto; gap:12px; align-items:end; margin-bottom:12px; }
+        label { display:block; margin-bottom:5px; font-size:12px; font-weight:700; color:#555; }
+        input[type=text], input[type=number], select { width:100%; padding:9px 11px; border:1px solid #ddd; border-radius:6px; font:inherit; }
+        .boolean { display:flex; gap:12px; min-height:38px; align-items:center; }
+        .boolean label { margin:0; font-weight:500; }
+        .actions { display:flex; gap:8px; margin-top:16px; }
+        button { border:0; border-radius:6px; padding:9px 14px; font-weight:700; cursor:pointer; }
+        .primary { background:#4a6cf7; color:#fff; }
+        .secondary { background:#e8ecf4; color:#333; }
+        .danger { background:#fde8e8; color:#b00020; }
+        .save { background:#e8f0fe; color:#315dcc; }
+        table { width:100%; border-collapse:collapse; min-width:900px; }
+        th, td { padding:10px; border-bottom:1px solid #eee; text-align:left; vertical-align:middle; }
+        th { color:#777; font-size:12px; text-transform:uppercase; }
+        .alert { padding:12px 16px; margin-bottom:16px; border-radius:6px; background:#fde8e8; color:#b00020; }
+        .empty { color:#888; }
+        @@media (max-width:850px) { .question-row { grid-template-columns:1fr; } }
+    </style>
+</head>
+<body>
+<div class="header">
+    <h1>Backoffice</h1>
+    <nav>
+        <a href="/Backoffice">Rooms</a>
+        <a href="/Backoffice/Questions" class="active">Questions</a>
+        <a href="/Backoffice/Users">Users</a>
+        <a href="/Backoffice/Login?handler=Logout">Logout</a>
+    </nav>
+</div>
+<main class="container">
+    @if (TempData["Error"] is string error)
+    {
+        <div class="alert">@error</div>
+    }
+
+    <section class="card">
+        <h2>Add questions</h2>
+        @if (Model.Rooms.Count == 0)
+        {
+            <p class="empty">Create a room before adding questions.</p>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="Add">
+                <div id="newQuestionRows">
+                    <div class="question-row" data-index="0">
+                        <div><label>Room</label><select name="NewQuestions[0].SponsorId" required>@foreach (var room in Model.Rooms) { <option value="@room.Id">@room.Name</option> }</select></div>
+                        <div><label>Question</label><input type="text" name="NewQuestions[0].Text" maxlength="1000" required /></div>
+                        <div><label>Correct answer</label><div class="boolean"><label><input type="radio" name="NewQuestions[0].CorrectAnswer" value="true" checked /> True</label><label><input type="radio" name="NewQuestions[0].CorrectAnswer" value="false" /> False</label></div></div>
+                        <div><label>Points</label><input type="number" name="NewQuestions[0].Points" min="0" value="1" required /></div>
+                        <button type="button" class="danger remove-row">Delete</button>
+                    </div>
+                </div>
+                <div class="actions"><button type="button" class="secondary" id="addRow">Add question</button><button type="submit" class="primary">Save questions</button></div>
+            </form>
+        }
+    </section>
+
+    <section class="card">
+        <h2>Existing questions</h2>
+        @if (Model.Questions.Count == 0)
+        {
+            <p class="empty">No questions yet.</p>
+        }
+        else
+        {
+            @foreach (var question in Model.Questions)
+            {
+                <form method="post" asp-page-handler="Update" class="question-row">
+                    <input type="hidden" name="Form.Id" value="@question.Id" />
+                    <div><label>Room</label><select name="Form.SponsorId">@foreach (var room in Model.Rooms) { if (room.Id == question.SponsorId) { <option value="@room.Id" selected>@room.Name</option> } else { <option value="@room.Id">@room.Name</option> } }</select></div>
+                    <div><label>Question</label><input type="text" name="Form.Text" value="@question.Text" maxlength="1000" required /></div>
+                    <div><label>Correct answer</label><div class="boolean">@if (question.CorrectAnswer) { <label><input type="radio" name="Form.CorrectAnswer" value="true" checked /> True</label><label><input type="radio" name="Form.CorrectAnswer" value="false" /> False</label> } else { <label><input type="radio" name="Form.CorrectAnswer" value="true" /> True</label><label><input type="radio" name="Form.CorrectAnswer" value="false" checked /> False</label> }</div></div>
+                    <div><label>Points</label><input type="number" name="Form.Points" value="@question.Points" min="0" required /></div>
+                    <div class="actions"><button type="submit" class="save">Save</button><button type="submit" class="danger" formaction="?handler=Delete&id=@question.Id" formmethod="post" onclick="return confirm('Delete this question?')">Delete</button></div>
+                </form>
+            }
+        }
+    </section>
+</main>
+<script>
+    const rows = document.getElementById('newQuestionRows');
+    const addButton = document.getElementById('addRow');
+    function reindex() {
+        [...rows.querySelectorAll('.question-row')].forEach((row, index) => {
+            row.dataset.index = String(index);
+            row.querySelectorAll('[name]').forEach(input => input.name = input.name.replace(/NewQuestions\[\d+\]/, `NewQuestions[${index}]`));
+        });
+    }
+    addButton?.addEventListener('click', () => {
+        const template = rows.querySelector('.question-row');
+        const clone = template.cloneNode(true);
+        clone.querySelector('input[type=text]').value = '';
+        clone.querySelector('input[type=number]').value = '1';
+        clone.querySelector('input[type=radio][value=true]').checked = true;
+        rows.appendChild(clone);
+        reindex();
+    });
+    rows?.addEventListener('click', event => {
+        const button = event.target.closest('.remove-row');
+        if (!button) return;
+        if (rows.querySelectorAll('.question-row').length === 1) {
+            button.closest('.question-row').querySelector('input[type=text]').value = '';
+            return;
+        }
+        button.closest('.question-row').remove();
+        reindex();
+    });
+</script>
+</body>
+</html>

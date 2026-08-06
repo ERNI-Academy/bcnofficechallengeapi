@@ -1,5 +1,9 @@
+using System.Data;
+using System.Security.Claims;
 using bcnofficechallengeapi.Data;
 using bcnofficechallengeapi.Models;
+using bcnofficechallengeapi.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,73 +11,220 @@ namespace bcnofficechallengeapi.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class ScansController(AppDbContext db) : ControllerBase
+[Authorize(AuthenticationSchemes = "ParticipantJwt")]
+public class ScansController(AppDbContext db, QrTokenService qrTokens) : ControllerBase
 {
-    [HttpPost]
-    public async Task<IActionResult> RegisterScan(RegisterScanRequest request)
+    private const string AlreadyCompletedMessage = "Nice try, you already scanned this code.";
+
+    [HttpGet("me")]
+    public async Task<ActionResult<IEnumerable<CompletedRoomResponse>>> GetMine()
     {
-        var deadline = new DateTime(2026, 4, 21, 13, 0, 0, DateTimeKind.Utc);
-        if (DateTime.UtcNow > deadline)
-            return BadRequest(new { error = "The time to participate has ended." });
-
-        var user = await db.Users.FindAsync(request.UserId);
-        if (user is null)
-            return NotFound(new { error = $"User with id {request.UserId} was not found." });
-
-        var sponsor = await db.Sponsors.FirstOrDefaultAsync(s => s.QrId == request.QrId);
-        if (sponsor is null)
-            return NotFound(new { error = "Invalid QR code." });
-
-        var alreadyScanned = await db.UserSponsorScans
-            .AnyAsync(s => s.UserId == request.UserId && s.SponsorId == sponsor.Id);
-
-        if (alreadyScanned)
-            return Conflict(new { error = "This sponsor has already been scanned by this user." });
-
-        var scan = new UserSponsorScan
-        {
-            UserId = request.UserId,
-            SponsorId = sponsor.Id,
-            ScannedAt = DateTime.UtcNow
-        };
-
-        user.Points += sponsor.PointsValue;
-        user.PointsTimestamp = DateTime.UtcNow;
-
-        db.UserSponsorScans.Add(scan);
-        await db.SaveChangesAsync();
-
-        return Created(string.Empty, new { scan.UserId, scan.SponsorId, scan.ScannedAt, user.Points });
-    }
-
-    [HttpGet("{userId}")]
-    public async Task<ActionResult<IEnumerable<ScannedSponsorResponse>>> GetByUser(Guid userId)
-    {
-        var userExists = await db.Users.AnyAsync(u => u.Id == userId);
-        if (!userExists)
-            return NotFound(new { error = $"User with id {userId} was not found." });
+        if (!TryGetUserId(out var userId))
+            return Unauthorized();
 
         var scans = await db.UserSponsorScans
-            .Where(s => s.UserId == userId)
-            .Select(s => new ScannedSponsorResponse
+            .Where(scan => scan.UserId == userId)
+            .OrderBy(scan => scan.ScannedAt)
+            .Select(scan => new CompletedRoomResponse
             {
-                SponsorId = s.SponsorId,
-                ScannedAt = s.ScannedAt
+                SponsorId = scan.SponsorId,
+                CompletedAt = scan.ScannedAt,
+                PointsAwarded = scan.PointsAwarded,
+                MaximumPoints = scan.MaximumPoints
             })
             .ToListAsync();
 
         return Ok(scans);
     }
+
+    [HttpPost("prepare")]
+    public async Task<ActionResult<PreparedQuestionsResponse>> Prepare(PrepareQuestionsRequest request)
+    {
+        if (!TryGetUserId(out var userId))
+            return Unauthorized();
+
+        var resolved = await ResolveRoomAsync(request.RoomId, request.Qr);
+        if (!resolved.Ok)
+            return StatusCode(resolved.Status, new { error = resolved.Error });
+
+        if (await HasCompletedAsync(userId, resolved.Sponsor!.Id))
+            return Conflict(new { errorCode = "ROOM_ALREADY_COMPLETED", error = AlreadyCompletedMessage });
+
+        var questions = await db.Questions
+            .Where(question => question.SponsorId == resolved.Sponsor.Id)
+            .OrderBy(question => question.SortOrder)
+            .ThenBy(question => question.Id)
+            .Select(question => new PreparedQuestionResponse
+            {
+                Id = question.Id,
+                Text = question.Text
+            })
+            .ToListAsync();
+
+        if (questions.Count == 0)
+            return BadRequest(new { error = "This room does not have any questions yet." });
+
+        return Ok(new PreparedQuestionsResponse
+        {
+            RoomId = resolved.Sponsor.Id,
+            RoomName = resolved.Sponsor.Name,
+            Questions = questions
+        });
+    }
+
+    [HttpPost("complete")]
+    public async Task<ActionResult<CompletedQuizResponse>> Complete(CompleteQuizRequest request)
+    {
+        if (!TryGetUserId(out var userId))
+            return Unauthorized();
+
+        var resolved = await ResolveRoomAsync(request.RoomId, request.Qr);
+        if (!resolved.Ok)
+            return StatusCode(resolved.Status, new { error = resolved.Error });
+
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+        if (await HasCompletedAsync(userId, resolved.Sponsor!.Id))
+            return Conflict(new { errorCode = "ROOM_ALREADY_COMPLETED", error = AlreadyCompletedMessage });
+
+        var user = await db.Users.FindAsync(userId);
+        if (user is null)
+            return Unauthorized();
+
+        var questions = await db.Questions
+            .Where(question => question.SponsorId == resolved.Sponsor.Id)
+            .ToListAsync();
+
+        if (questions.Count == 0)
+            return BadRequest(new { error = "This room does not have any questions yet." });
+
+        var answers = request.Answers ?? [];
+        if (answers.Count != questions.Count || answers.Select(answer => answer.QuestionId).Distinct().Count() != questions.Count)
+            return BadRequest(new { error = "Every question must be answered exactly once." });
+
+        var answersByQuestion = answers.ToDictionary(answer => answer.QuestionId, answer => answer.Answer);
+        if (questions.Any(question => !answersByQuestion.ContainsKey(question.Id)))
+            return BadRequest(new { error = "One or more answers do not belong to this room." });
+
+        var maximumPoints = questions.Sum(question => question.Points);
+        var pointsAwarded = questions
+            .Where(question => answersByQuestion[question.Id] == question.CorrectAnswer)
+            .Sum(question => question.Points);
+        var completedAt = DateTime.UtcNow;
+
+        db.UserSponsorScans.Add(new UserSponsorScan
+        {
+            UserId = userId,
+            SponsorId = resolved.Sponsor.Id,
+            ScannedAt = completedAt,
+            PointsAwarded = pointsAwarded,
+            MaximumPoints = maximumPoints
+        });
+
+        user.Points += pointsAwarded;
+        user.PointsTimestamp = completedAt;
+
+        try
+        {
+            await db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch (DbUpdateException)
+        {
+            await transaction.RollbackAsync();
+            return Conflict(new { errorCode = "ROOM_ALREADY_COMPLETED", error = AlreadyCompletedMessage });
+        }
+
+        return Ok(new CompletedQuizResponse
+        {
+            PointsEarned = pointsAwarded,
+            MaximumPoints = maximumPoints,
+            TotalPoints = user.Points,
+            CompletedAt = completedAt
+        });
+    }
+
+    private async Task<ResolvedRoom> ResolveRoomAsync(Guid roomId, QrPayloadRequest? qr)
+    {
+        if (roomId == Guid.Empty || qr is null || qr.V != 1 || string.IsNullOrWhiteSpace(qr.Token))
+            return ResolvedRoom.Failure(400, "Invalid QR payload.");
+
+        if (!qrTokens.TryUnprotect(qr.Token, out var qrId))
+            return ResolvedRoom.Failure(400, "Invalid or modified QR code.");
+
+        var sponsor = await db.Sponsors.FirstOrDefaultAsync(item => item.QrId == qrId);
+        if (sponsor is null)
+            return ResolvedRoom.Failure(404, "Invalid QR code.");
+        if (sponsor.Id != roomId)
+            return ResolvedRoom.Failure(400, "This QR code belongs to a different room.");
+
+        return ResolvedRoom.Success(sponsor);
+    }
+
+    private Task<bool> HasCompletedAsync(Guid userId, Guid sponsorId) =>
+        db.UserSponsorScans.AnyAsync(scan => scan.UserId == userId && scan.SponsorId == sponsorId);
+
+    private bool TryGetUserId(out Guid userId)
+    {
+        var subject = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(subject, out userId);
+    }
+
+    private sealed record ResolvedRoom(bool Ok, int Status, string? Error, Sponsor? Sponsor)
+    {
+        public static ResolvedRoom Success(Sponsor sponsor) => new(true, 200, null, sponsor);
+        public static ResolvedRoom Failure(int status, string error) => new(false, status, error, null);
+    }
 }
 
-public class RegisterScanRequest
+public class QrPayloadRequest
 {
-    public Guid UserId { get; set; }
-    public Guid QrId { get; set; }
+    public int V { get; set; }
+    public string Token { get; set; } = string.Empty;
 }
 
-public class ScannedSponsorResponse
+public class PrepareQuestionsRequest
+{
+    public Guid RoomId { get; set; }
+    public QrPayloadRequest? Qr { get; set; }
+}
+
+public class CompleteQuizRequest : PrepareQuestionsRequest
+{
+    public List<QuizAnswerRequest>? Answers { get; set; }
+}
+
+public class QuizAnswerRequest
+{
+    public Guid QuestionId { get; set; }
+    public bool Answer { get; set; }
+}
+
+public class PreparedQuestionsResponse
+{
+    public Guid RoomId { get; set; }
+    public string RoomName { get; set; } = string.Empty;
+    public List<PreparedQuestionResponse> Questions { get; set; } = [];
+}
+
+public class PreparedQuestionResponse
+{
+    public Guid Id { get; set; }
+    public string Text { get; set; } = string.Empty;
+}
+
+public class CompletedQuizResponse
+{
+    public int PointsEarned { get; set; }
+    public int MaximumPoints { get; set; }
+    public int TotalPoints { get; set; }
+    public DateTime CompletedAt { get; set; }
+}
+
+public class CompletedRoomResponse
 {
     public Guid SponsorId { get; set; }
-    public DateTime ScannedAt { get; set; }
+    public DateTime CompletedAt { get; set; }
+    public int PointsAwarded { get; set; }
+    public int MaximumPoints { get; set; }
 }

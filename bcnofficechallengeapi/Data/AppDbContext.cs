@@ -17,6 +17,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<UserSponsorScan> UserSponsorScans => Set<UserSponsorScan>();
 
+    public DbSet<Question> Questions => Set<Question>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -34,6 +36,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(e => e.PointsTimestamp).HasColumnName("points_timestamp");
             entity.Property(e => e.LinkedIn).HasColumnName("linkedin");
             entity.Property(e => e.Password).HasColumnName("password").IsRequired();
+            entity.HasIndex(e => e.Email).IsUnique();
         });
 
         modelBuilder.Entity<Sponsor>(entity =>
@@ -77,7 +80,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.SponsorId).HasColumnName("sponsor_id");
             entity.Property(e => e.ScannedAt).HasColumnName("scanned_at");
+            entity.Property(e => e.PointsAwarded).HasColumnName("points_awarded");
+            entity.Property(e => e.MaximumPoints).HasColumnName("maximum_points");
             entity.HasIndex(e => new { e.UserId, e.SponsorId }).IsUnique();
+            entity.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Sponsor>().WithMany().HasForeignKey(e => e.SponsorId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Question>(entity =>
+        {
+            entity.ToTable("questions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            entity.Property(e => e.SponsorId).HasColumnName("sponsor_id");
+            entity.Property(e => e.Text).HasColumnName("text").HasMaxLength(1000).IsRequired();
+            entity.Property(e => e.CorrectAnswer).HasColumnName("correct_answer");
+            entity.Property(e => e.Points).HasColumnName("points");
+            entity.Property(e => e.SortOrder).HasColumnName("sort_order");
+            entity.HasIndex(e => new { e.SponsorId, e.SortOrder });
+            entity.HasOne<Sponsor>().WithMany().HasForeignKey(e => e.SponsorId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
