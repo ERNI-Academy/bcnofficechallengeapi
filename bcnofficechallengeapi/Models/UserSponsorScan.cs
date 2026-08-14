@@ -13,4 +13,6 @@ public class UserSponsorScan
     public int PointsAwarded { get; set; }
 
     public int MaximumPoints { get; set; }
+
+    public ICollection<UserSponsorScanAnswer> AnswerResults { get; set; } = [];
 }

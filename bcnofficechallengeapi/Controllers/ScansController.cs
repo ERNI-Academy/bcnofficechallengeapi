@@ -23,18 +23,23 @@ public class ScansController(AppDbContext db, QrTokenService qrTokens) : Control
             return Unauthorized();
 
         var scans = await db.UserSponsorScans
+            .AsNoTracking()
+            .Include(scan => scan.AnswerResults)
             .Where(scan => scan.UserId == userId)
             .OrderBy(scan => scan.ScannedAt)
-            .Select(scan => new CompletedRoomResponse
-            {
-                SponsorId = scan.SponsorId,
-                CompletedAt = scan.ScannedAt,
-                PointsAwarded = scan.PointsAwarded,
-                MaximumPoints = scan.MaximumPoints
-            })
             .ToListAsync();
 
-        return Ok(scans);
+        return Ok(scans.Select(scan => new CompletedRoomResponse
+        {
+            SponsorId = scan.SponsorId,
+            CompletedAt = scan.ScannedAt,
+            PointsAwarded = scan.PointsAwarded,
+            MaximumPoints = scan.MaximumPoints,
+            AnswerResults = scan.AnswerResults
+                .OrderBy(answer => answer.Id)
+                .Select(ToAnswerResult)
+                .ToList()
+        }));
     }
 
     [HttpPost("prepare")]
@@ -107,19 +112,45 @@ public class ScansController(AppDbContext db, QrTokenService qrTokens) : Control
             return BadRequest(new { error = "One or more answers do not belong to this room." });
 
         var maximumPoints = questions.Sum(question => question.Points);
-        var pointsAwarded = questions
-            .Where(question => answersByQuestion[question.Id] == question.CorrectAnswer)
-            .Sum(question => question.Points);
+        var calculatedAnswers = questions
+            .Select(question =>
+            {
+                var selectedAnswer = answersByQuestion[question.Id];
+                var isCorrect = selectedAnswer == question.CorrectAnswer;
+                return new CalculatedQuizAnswer(
+                    question.Id,
+                    question.Text,
+                    selectedAnswer,
+                    question.CorrectAnswer,
+                    isCorrect,
+                    isCorrect ? question.Points : 0);
+            })
+            .ToList();
+        var pointsAwarded = calculatedAnswers.Sum(answer => answer.PointsAwarded);
         var completedAt = DateTime.UtcNow;
 
-        db.UserSponsorScans.Add(new UserSponsorScan
+        var scan = new UserSponsorScan
         {
+            Id = Guid.NewGuid(),
             UserId = userId,
             SponsorId = resolved.Sponsor.Id,
             ScannedAt = completedAt,
             PointsAwarded = pointsAwarded,
             MaximumPoints = maximumPoints
-        });
+        };
+
+        db.UserSponsorScans.Add(scan);
+        db.UserSponsorScanAnswers.AddRange(calculatedAnswers.Select(answer => new UserSponsorScanAnswer
+        {
+            Id = Guid.NewGuid(),
+            UserSponsorScanId = scan.Id,
+            QuestionId = answer.QuestionId,
+            QuestionText = answer.QuestionText,
+            SelectedAnswer = answer.SelectedAnswer,
+            CorrectAnswer = answer.CorrectAnswer,
+            IsCorrect = answer.IsCorrect,
+            PointsAwarded = answer.PointsAwarded
+        }));
 
         user.Points += pointsAwarded;
         user.PointsTimestamp = completedAt;
@@ -140,7 +171,13 @@ public class ScansController(AppDbContext db, QrTokenService qrTokens) : Control
             PointsEarned = pointsAwarded,
             MaximumPoints = maximumPoints,
             TotalPoints = user.Points,
-            CompletedAt = completedAt
+            CompletedAt = completedAt,
+            AnswerResults = calculatedAnswers.Select(answer => new QuizAnswerResultResponse
+            {
+                QuestionId = answer.QuestionId,
+                QuestionText = answer.QuestionText,
+                IsCorrect = answer.IsCorrect
+            }).ToList()
         });
     }
 
@@ -169,6 +206,21 @@ public class ScansController(AppDbContext db, QrTokenService qrTokens) : Control
         var subject = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.TryParse(subject, out userId);
     }
+
+    private static QuizAnswerResultResponse ToAnswerResult(UserSponsorScanAnswer answer) => new()
+    {
+        QuestionId = answer.QuestionId,
+        QuestionText = answer.QuestionText,
+        IsCorrect = answer.IsCorrect
+    };
+
+    private sealed record CalculatedQuizAnswer(
+        Guid QuestionId,
+        string QuestionText,
+        bool SelectedAnswer,
+        bool CorrectAnswer,
+        bool IsCorrect,
+        int PointsAwarded);
 
     private sealed record ResolvedRoom(bool Ok, int Status, string? Error, Sponsor? Sponsor)
     {
@@ -219,6 +271,7 @@ public class CompletedQuizResponse
     public int MaximumPoints { get; set; }
     public int TotalPoints { get; set; }
     public DateTime CompletedAt { get; set; }
+    public List<QuizAnswerResultResponse> AnswerResults { get; set; } = [];
 }
 
 public class CompletedRoomResponse
@@ -227,4 +280,12 @@ public class CompletedRoomResponse
     public DateTime CompletedAt { get; set; }
     public int PointsAwarded { get; set; }
     public int MaximumPoints { get; set; }
+    public List<QuizAnswerResultResponse> AnswerResults { get; set; } = [];
+}
+
+public class QuizAnswerResultResponse
+{
+    public Guid QuestionId { get; set; }
+    public string QuestionText { get; set; } = string.Empty;
+    public bool IsCorrect { get; set; }
 }

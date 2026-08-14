@@ -106,14 +106,6 @@
                     <label>Password <span id="pwdHint" style="font-weight:400;color:#aaa">(required for new)</span></label>
                     <input type="password" asp-for="Form.Password" id="uPassword" autocomplete="new-password" />
                 </div>
-                <div class="form-group">
-                    <label>Company Name</label>
-                    <input type="text" asp-for="Form.CompanyName" id="uCompanyName" />
-                </div>
-                <div class="form-group">
-                    <label>Job Title</label>
-                    <input type="text" asp-for="Form.JobTitle" id="uJobTitle" />
-                </div>
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary" id="submitBtn">Add</button>
@@ -174,7 +166,7 @@
                             <td>@(u.PointsTimestamp?.ToString("dd/MM/yy HH:mm") ?? "—")</td>
                             <td class="actions">
                                 <button type="button" class="btn-sm btn-edit"
-                                        onclick="editUser('@u.Id', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.Name))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.Email))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.CompanyName ?? ""))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.JobTitle ?? ""))')">
+                                        onclick="editUser('@u.Id', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.Name))', '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(u.Email))')">
                                     Edit
                                 </button>
                                 <form method="post" asp-page-handler="Delete" style="display:inline">
@@ -235,13 +227,11 @@
 </div>
 
 <script>
-    function editUser(id, name, email, companyName, jobTitle) {
+    function editUser(id, name, email) {
         document.getElementById('UserId').value = id;
         document.getElementById('uName').value = name;
         document.getElementById('uEmail').value = email;
         document.getElementById('uPassword').value = '';
-        document.getElementById('uCompanyName').value = companyName;
-        document.getElementById('uJobTitle').value = jobTitle;
         document.getElementById('formTitle').textContent = 'Edit User';
         document.getElementById('pwdHint').textContent = '(leave empty to keep current)';
         document.getElementById('submitBtn').textContent = 'Update';
@@ -254,8 +244,6 @@
         document.getElementById('uName').value = '';
         document.getElementById('uEmail').value = '';
         document.getElementById('uPassword').value = '';
-        document.getElementById('uCompanyName').value = '';
-        document.getElementById('uJobTitle').value = '';
         document.getElementById('formTitle').textContent = 'Add User';
         document.getElementById('pwdHint').textContent = '(required for new)';
         document.getElementById('submitBtn').textContent = 'Add';

@@ -17,6 +17,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<UserSponsorScan> UserSponsorScans => Set<UserSponsorScan>();
 
+    public DbSet<UserSponsorScanAnswer> UserSponsorScanAnswers => Set<UserSponsorScanAnswer>();
+
     public DbSet<Question> Questions => Set<Question>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -85,6 +87,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasIndex(e => new { e.UserId, e.SponsorId }).IsUnique();
             entity.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Sponsor>().WithMany().HasForeignKey(e => e.SponsorId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<UserSponsorScanAnswer>(entity =>
+        {
+            entity.ToTable("user_sponsor_scan_answers");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            entity.Property(e => e.UserSponsorScanId).HasColumnName("user_sponsor_scan_id");
+            entity.Property(e => e.QuestionId).HasColumnName("question_id");
+            entity.Property(e => e.QuestionText).HasColumnName("question_text").HasMaxLength(1000).IsRequired();
+            entity.Property(e => e.SelectedAnswer).HasColumnName("selected_answer");
+            entity.Property(e => e.CorrectAnswer).HasColumnName("correct_answer");
+            entity.Property(e => e.IsCorrect).HasColumnName("is_correct");
+            entity.Property(e => e.PointsAwarded).HasColumnName("points_awarded");
+            entity.HasIndex(e => new { e.UserSponsorScanId, e.QuestionId }).IsUnique();
+            entity.HasOne<UserSponsorScan>()
+                .WithMany(scan => scan.AnswerResults)
+                .HasForeignKey(e => e.UserSponsorScanId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Question>(entity =>

@@ -16,14 +16,6 @@ public class CreateUserRequest
     [MinLength(1, ErrorMessage = "'password' cannot be empty.")]
     public string Password { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "'companyName' is required.")]
-    [MinLength(1, ErrorMessage = "'companyName' cannot be empty.")]
-    public string CompanyName { get; set; } = string.Empty;
-
-    [Required(ErrorMessage = "'jobTitle' is required.")]
-    [MinLength(1, ErrorMessage = "'jobTitle' cannot be empty.")]
-    public string JobTitle { get; set; } = string.Empty;
-
 }
 
 public class UpdateUserRequest

@@ -30,8 +30,6 @@ public class UsersController(AppDbContext db, ParticipantTokenService tokenServi
             Name = request.FullName.Trim(),
             Email = email,
             Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
-            CompanyName = request.CompanyName.Trim(),
-            JobTitle = request.JobTitle.Trim(),
             Points = 0
         };
 

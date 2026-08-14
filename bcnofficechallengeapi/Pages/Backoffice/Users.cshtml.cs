@@ -74,8 +74,6 @@ public class UsersModel(AppDbContext db) : PageModel
                 Name = Form.Name,
                 Email = Form.Email,
                 Password = BCrypt.Net.BCrypt.HashPassword(Form.Password),
-                CompanyName = Form.CompanyName,
-                JobTitle = Form.JobTitle,
                 Points = 0,
             });
         }
@@ -86,8 +84,6 @@ public class UsersModel(AppDbContext db) : PageModel
             {
                 existing.Name = Form.Name;
                 existing.Email = Form.Email;
-                existing.CompanyName = Form.CompanyName;
-                existing.JobTitle = Form.JobTitle;
                 if (!string.IsNullOrWhiteSpace(Form.Password))
                     existing.Password = BCrypt.Net.BCrypt.HashPassword(Form.Password);
             }
@@ -120,6 +116,4 @@ public class UserForm
     public string Name { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string? Password { get; set; }
-    public string? CompanyName { get; set; }
-    public string? JobTitle { get; set; }
 }
