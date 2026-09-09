@@ -21,6 +21,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<Question> Questions => Set<Question>();
 
+    public DbSet<Curiosity> Curiosities => Set<Curiosity>();
+
+    public DbSet<UserCuriosityView> UserCuriosityViews => Set<UserCuriosityView>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -119,6 +123,30 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(e => e.Points).HasColumnName("points");
             entity.Property(e => e.SortOrder).HasColumnName("sort_order");
             entity.HasIndex(e => new { e.SponsorId, e.SortOrder });
+            entity.HasOne<Sponsor>().WithMany().HasForeignKey(e => e.SponsorId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Curiosity>(entity =>
+        {
+            entity.ToTable("curiosities");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            entity.Property(e => e.SponsorId).HasColumnName("sponsor_id");
+            entity.Property(e => e.Text).HasColumnName("text").HasMaxLength(1000).IsRequired();
+            entity.HasIndex(e => e.SponsorId).IsUnique();
+            entity.HasOne<Sponsor>().WithMany().HasForeignKey(e => e.SponsorId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserCuriosityView>(entity =>
+        {
+            entity.ToTable("user_curiosity_views");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.SponsorId).HasColumnName("sponsor_id");
+            entity.Property(e => e.ViewedAt).HasColumnName("viewed_at");
+            entity.HasIndex(e => new { e.UserId, e.SponsorId }).IsUnique();
+            entity.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Sponsor>().WithMany().HasForeignKey(e => e.SponsorId).OnDelete(DeleteBehavior.Cascade);
         });
     }

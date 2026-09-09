@@ -14,10 +14,11 @@ public class SponsorsController(AppDbContext db) : ControllerBase
     {
         var sponsors = await db.Sponsors
             .OrderBy(s => s.Name)
-            .Select(s => ToResponse(s))
             .ToListAsync();
+        var curiosities = await db.Curiosities
+            .ToDictionaryAsync(curiosity => curiosity.SponsorId, curiosity => curiosity.Text);
 
-        return Ok(sponsors);
+        return Ok(sponsors.Select(s => ToResponse(s, curiosities.GetValueOrDefault(s.Id))));
     }
 
     [HttpGet("{id}")]
@@ -30,16 +31,22 @@ public class SponsorsController(AppDbContext db) : ControllerBase
             return NotFound(new { error = $"Sponsor with id {id} was not found." });
         }
 
-        return Ok(ToResponse(sponsor));
+        var curiosity = await db.Curiosities
+            .Where(item => item.SponsorId == id)
+            .Select(item => item.Text)
+            .FirstOrDefaultAsync();
+
+        return Ok(ToResponse(sponsor, curiosity));
     }
 
-    private static SponsorResponse ToResponse(Sponsor sponsor) => new()
+    private static SponsorResponse ToResponse(Sponsor sponsor, string? curiosity) => new()
     {
         Id = sponsor.Id,
         Name = sponsor.Name,
         Description = sponsor.Description,
         Url = sponsor.Url,
-        ImageUrl = sponsor.ImageUrl
+        ImageUrl = sponsor.ImageUrl,
+        Curiosity = curiosity
     };
 }
 
@@ -50,4 +57,5 @@ public class SponsorResponse
     public string? Description { get; set; }
     public string? Url { get; set; }
     public string? ImageUrl { get; set; }
+    public string? Curiosity { get; set; }
 }
