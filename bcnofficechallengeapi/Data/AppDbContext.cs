@@ -86,7 +86,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(e => e.MaximumPoints).HasColumnName("maximum_points");
             entity.HasIndex(e => new { e.UserId, e.SponsorId }).IsUnique();
             entity.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne<Sponsor>().WithMany().HasForeignKey(e => e.SponsorId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Sponsor>().WithMany().HasForeignKey(e => e.SponsorId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<UserSponsorScanAnswer>(entity =>

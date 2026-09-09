@@ -62,12 +62,38 @@ public class IndexModel(AppDbContext db, QrTokenService qrTokens) : PageModel
 
     public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
+        await using var transaction = await db.Database.BeginTransactionAsync();
+
         var sponsor = await db.Sponsors.FindAsync(id);
-        if (sponsor is not null)
+        if (sponsor is null)
         {
-            db.Sponsors.Remove(sponsor);
-            await db.SaveChangesAsync();
+            return RedirectToPage();
         }
+
+        var scans = await db.UserSponsorScans
+            .Where(scan => scan.SponsorId == id)
+            .ToListAsync();
+
+        var pointsByUser = scans
+            .GroupBy(scan => scan.UserId)
+            .ToDictionary(group => group.Key, group => group.Sum(scan => scan.PointsAwarded));
+
+        if (pointsByUser.Count > 0)
+        {
+            var users = await db.Users
+                .Where(user => pointsByUser.Keys.Contains(user.Id))
+                .ToListAsync();
+
+            foreach (var user in users)
+            {
+                user.Points = Math.Max(0, user.Points - pointsByUser[user.Id]);
+                user.PointsTimestamp = DateTime.UtcNow;
+            }
+        }
+
+        db.Sponsors.Remove(sponsor);
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         return RedirectToPage();
     }
