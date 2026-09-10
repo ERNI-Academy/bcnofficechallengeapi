@@ -21,6 +21,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<Question> Questions => Set<Question>();
 
+    public DbSet<QuestionOption> QuestionOptions => Set<QuestionOption>();
+
     public DbSet<Curiosity> Curiosities => Set<Curiosity>();
 
     public DbSet<UserCuriosityView> UserCuriosityViews => Set<UserCuriosityView>();
@@ -101,8 +103,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(e => e.UserSponsorScanId).HasColumnName("user_sponsor_scan_id");
             entity.Property(e => e.QuestionId).HasColumnName("question_id");
             entity.Property(e => e.QuestionText).HasColumnName("question_text").HasMaxLength(1000).IsRequired();
-            entity.Property(e => e.SelectedAnswer).HasColumnName("selected_answer");
-            entity.Property(e => e.CorrectAnswer).HasColumnName("correct_answer");
+            entity.Property(e => e.SelectedOptionIdsJson).HasColumnName("selected_option_ids").HasColumnType("nvarchar(max)").IsRequired();
+            entity.Property(e => e.CorrectOptionIdsJson).HasColumnName("correct_option_ids").HasColumnType("nvarchar(max)").IsRequired();
             entity.Property(e => e.IsCorrect).HasColumnName("is_correct");
             entity.Property(e => e.PointsAwarded).HasColumnName("points_awarded");
             entity.HasIndex(e => new { e.UserSponsorScanId, e.QuestionId }).IsUnique();
@@ -119,11 +121,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
             entity.Property(e => e.SponsorId).HasColumnName("sponsor_id");
             entity.Property(e => e.Text).HasColumnName("text").HasMaxLength(1000).IsRequired();
-            entity.Property(e => e.CorrectAnswer).HasColumnName("correct_answer");
             entity.Property(e => e.Points).HasColumnName("points");
-            entity.Property(e => e.SortOrder).HasColumnName("sort_order");
-            entity.HasIndex(e => new { e.SponsorId, e.SortOrder });
+            entity.HasIndex(e => e.SponsorId).IsUnique();
             entity.HasOne<Sponsor>().WithMany().HasForeignKey(e => e.SponsorId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<QuestionOption>(entity =>
+        {
+            entity.ToTable("question_options");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            entity.Property(e => e.QuestionId).HasColumnName("question_id");
+            entity.Property(e => e.Text).HasColumnName("text").HasMaxLength(1000).IsRequired();
+            entity.Property(e => e.IsCorrect).HasColumnName("is_correct");
+            entity.Property(e => e.SortOrder).HasColumnName("sort_order");
+            entity.HasIndex(e => new { e.QuestionId, e.SortOrder });
+            entity.HasOne<Question>()
+                .WithMany(question => question.Options)
+                .HasForeignKey(e => e.QuestionId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Curiosity>(entity =>

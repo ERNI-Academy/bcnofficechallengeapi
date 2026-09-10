@@ -8,9 +8,7 @@ public class Question
 
     public string Text { get; set; } = string.Empty;
 
-    public bool CorrectAnswer { get; set; }
-
     public int Points { get; set; }
 
-    public int SortOrder { get; set; }
+    public ICollection<QuestionOption> Options { get; set; } = [];
 }

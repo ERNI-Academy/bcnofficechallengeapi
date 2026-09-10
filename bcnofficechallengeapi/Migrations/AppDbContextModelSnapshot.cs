@@ -78,17 +78,9 @@ namespace bcnofficechallengeapi.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("id");
 
-                    b.Property<bool>("CorrectAnswer")
-                        .HasColumnType("bit")
-                        .HasColumnName("correct_answer");
-
                     b.Property<int>("Points")
                         .HasColumnType("int")
                         .HasColumnName("points");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int")
-                        .HasColumnName("sort_order");
 
                     b.Property<Guid>("SponsorId")
                         .HasColumnType("uniqueidentifier")
@@ -102,9 +94,42 @@ namespace bcnofficechallengeapi.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SponsorId", "SortOrder");
+                    b.HasIndex("SponsorId")
+                        .IsUnique();
 
                     b.ToTable("questions", (string)null);
+                });
+
+            modelBuilder.Entity("bcnofficechallengeapi.Models.QuestionOption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("question_id");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("text");
+
+                    b.Property<bool>("IsCorrect")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_correct");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int")
+                        .HasColumnName("sort_order");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId", "SortOrder");
+
+                    b.ToTable("question_options", (string)null);
                 });
 
             modelBuilder.Entity("bcnofficechallengeapi.Models.RankingEntry", b =>
@@ -296,10 +321,6 @@ namespace bcnofficechallengeapi.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("id");
 
-                    b.Property<bool>("CorrectAnswer")
-                        .HasColumnType("bit")
-                        .HasColumnName("correct_answer");
-
                     b.Property<bool>("IsCorrect")
                         .HasColumnType("bit")
                         .HasColumnName("is_correct");
@@ -318,9 +339,15 @@ namespace bcnofficechallengeapi.Migrations
                         .HasColumnType("nvarchar(1000)")
                         .HasColumnName("question_text");
 
-                    b.Property<bool>("SelectedAnswer")
-                        .HasColumnType("bit")
-                        .HasColumnName("selected_answer");
+                    b.Property<string>("CorrectOptionIdsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("correct_option_ids");
+
+                    b.Property<string>("SelectedOptionIdsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("selected_option_ids");
 
                     b.Property<Guid>("UserSponsorScanId")
                         .HasColumnType("uniqueidentifier")
@@ -374,6 +401,15 @@ namespace bcnofficechallengeapi.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("bcnofficechallengeapi.Models.QuestionOption", b =>
+                {
+                    b.HasOne("bcnofficechallengeapi.Models.Question", null)
+                        .WithMany("Options")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("bcnofficechallengeapi.Models.UserCuriosityView", b =>
                 {
                     b.HasOne("bcnofficechallengeapi.Models.Sponsor", null)
@@ -416,6 +452,11 @@ namespace bcnofficechallengeapi.Migrations
             modelBuilder.Entity("bcnofficechallengeapi.Models.UserSponsorScan", b =>
                 {
                     b.Navigation("AnswerResults");
+                });
+
+            modelBuilder.Entity("bcnofficechallengeapi.Models.Question", b =>
+                {
+                    b.Navigation("Options");
                 });
 #pragma warning restore 612, 618
         }

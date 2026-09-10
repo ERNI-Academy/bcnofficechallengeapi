@@ -10,9 +10,9 @@ public class UserSponsorScanAnswer
 
     public string QuestionText { get; set; } = string.Empty;
 
-    public bool SelectedAnswer { get; set; }
+    public string SelectedOptionIdsJson { get; set; } = "[]";
 
-    public bool CorrectAnswer { get; set; }
+    public string CorrectOptionIdsJson { get; set; } = "[]";
 
     public bool IsCorrect { get; set; }
 
