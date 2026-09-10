@@ -14,6 +14,8 @@ public class UserSponsorScanAnswer
 
     public string CorrectOptionIdsJson { get; set; } = "[]";
 
+    public string CorrectOptionTextsJson { get; set; } = "[]";
+
     public bool IsCorrect { get; set; }
 
     public int PointsAwarded { get; set; }

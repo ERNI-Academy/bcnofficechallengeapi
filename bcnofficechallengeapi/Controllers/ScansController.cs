@@ -131,11 +131,16 @@ public class ScansController(AppDbContext db, QrTokenService qrTokens) : Control
             .ThenBy(option => option.Id)
             .Select(option => option.Id)
             .ToList();
-        var orderedCorrectOptionIds = question.Options
+        var orderedCorrectOptions = question.Options
             .Where(option => correctOptionIds.Contains(option.Id))
             .OrderBy(option => option.SortOrder)
             .ThenBy(option => option.Id)
+            .ToList();
+        var orderedCorrectOptionIds = orderedCorrectOptions
             .Select(option => option.Id)
+            .ToList();
+        var orderedCorrectOptionTexts = orderedCorrectOptions
+            .Select(option => option.Text)
             .ToList();
 
         var calculatedAnswer = new CalculatedQuizAnswer(
@@ -143,6 +148,7 @@ public class ScansController(AppDbContext db, QrTokenService qrTokens) : Control
             question.Text,
             orderedSelectedOptionIds,
             orderedCorrectOptionIds,
+            orderedCorrectOptionTexts,
             isCorrect,
             isCorrect ? question.Points : 0);
         var completedAt = DateTime.UtcNow;
@@ -166,6 +172,7 @@ public class ScansController(AppDbContext db, QrTokenService qrTokens) : Control
             QuestionText = calculatedAnswer.QuestionText,
             SelectedOptionIdsJson = JsonSerializer.Serialize(calculatedAnswer.SelectedOptionIds),
             CorrectOptionIdsJson = JsonSerializer.Serialize(calculatedAnswer.CorrectOptionIds),
+            CorrectOptionTextsJson = JsonSerializer.Serialize(calculatedAnswer.CorrectOptionTexts),
             IsCorrect = calculatedAnswer.IsCorrect,
             PointsAwarded = calculatedAnswer.PointsAwarded
         });
@@ -194,7 +201,8 @@ public class ScansController(AppDbContext db, QrTokenService qrTokens) : Control
             {
                 QuestionId = calculatedAnswer.QuestionId,
                 QuestionText = calculatedAnswer.QuestionText,
-                IsCorrect = calculatedAnswer.IsCorrect
+                IsCorrect = calculatedAnswer.IsCorrect,
+                CorrectOptionTexts = calculatedAnswer.CorrectOptionTexts
             }]
         });
     }
@@ -247,14 +255,28 @@ public class ScansController(AppDbContext db, QrTokenService qrTokens) : Control
     {
         QuestionId = answer.QuestionId,
         QuestionText = answer.QuestionText,
-        IsCorrect = answer.IsCorrect
+        IsCorrect = answer.IsCorrect,
+        CorrectOptionTexts = DeserializeStringList(answer.CorrectOptionTextsJson)
     };
+
+    private static List<string> DeserializeStringList(string json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(json) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
 
     private sealed record CalculatedQuizAnswer(
         Guid QuestionId,
         string QuestionText,
         List<Guid> SelectedOptionIds,
         List<Guid> CorrectOptionIds,
+        List<string> CorrectOptionTexts,
         bool IsCorrect,
         int PointsAwarded);
 
@@ -326,4 +348,5 @@ public class QuizAnswerResultResponse
     public Guid QuestionId { get; set; }
     public string QuestionText { get; set; } = string.Empty;
     public bool IsCorrect { get; set; }
+    public List<string> CorrectOptionTexts { get; set; } = [];
 }

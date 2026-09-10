@@ -105,6 +105,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(e => e.QuestionText).HasColumnName("question_text").HasMaxLength(1000).IsRequired();
             entity.Property(e => e.SelectedOptionIdsJson).HasColumnName("selected_option_ids").HasColumnType("nvarchar(max)").IsRequired();
             entity.Property(e => e.CorrectOptionIdsJson).HasColumnName("correct_option_ids").HasColumnType("nvarchar(max)").IsRequired();
+            entity.Property(e => e.CorrectOptionTextsJson).HasColumnName("correct_option_texts").HasColumnType("nvarchar(max)").HasDefaultValue("[]").IsRequired();
             entity.Property(e => e.IsCorrect).HasColumnName("is_correct");
             entity.Property(e => e.PointsAwarded).HasColumnName("points_awarded");
             entity.HasIndex(e => new { e.UserSponsorScanId, e.QuestionId }).IsUnique();

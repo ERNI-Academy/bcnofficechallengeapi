@@ -344,6 +344,12 @@ namespace bcnofficechallengeapi.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("correct_option_ids");
 
+                    b.Property<string>("CorrectOptionTextsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("[]")
+                        .HasColumnName("correct_option_texts");
+
                     b.Property<string>("SelectedOptionIdsJson")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)")
